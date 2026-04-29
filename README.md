@@ -184,6 +184,42 @@ claude-feishu-bridge.cmd start
 
 Before using them, edit the `$AppDir` path inside the PowerShell script if you place the repo somewhere else.
 
+## macOS and Linux Convenience Commands
+
+This repository also includes:
+
+- `claude-feishu-bridge`
+- `scripts/daemon.sh`
+
+They support the same commands:
+
+- `start`
+- `stop`
+- `status`
+- `logs`
+
+Examples:
+
+```bash
+chmod +x claude-feishu-bridge scripts/daemon.sh
+./claude-feishu-bridge start
+./claude-feishu-bridge status
+./claude-feishu-bridge logs 100
+```
+
+If you want to use it globally:
+
+```bash
+chmod +x claude-feishu-bridge scripts/daemon.sh
+ln -sf "$(pwd)/claude-feishu-bridge" ~/.local/bin/claude-feishu-bridge
+```
+
+Then:
+
+```bash
+claude-feishu-bridge start
+```
+
 ## In-Chat Commands
 
 - `/help`
@@ -266,6 +302,12 @@ and inspect the error output.
 - `claude-feishu-bridge.cmd` Windows launcher
 - `config.env.example` config template
 
+## Release Notes
+
+The first public release notes are here:
+
+- `docs/release-notes-v0.1.0.md`
+
 ## License
 
-Add your preferred open source license before wider public distribution.
+Apache License 2.0. See `LICENSE` and `NOTICE`.
