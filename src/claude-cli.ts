@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import readline from 'node:readline';
 
 import type { Config } from './config.js';
@@ -85,7 +87,7 @@ export class ClaudeCliBridge {
 
   private invoke(prompt: string, sessionId?: string, hooks: ClaudeTurnHooks = {}): Promise<ClaudeTurnResult> {
     const resumed = Boolean(sessionId);
-    const args: string[] = [
+    const claudeArgs: string[] = [
       '--print',
       '--verbose',
       '--output-format',
@@ -97,20 +99,22 @@ export class ClaudeCliBridge {
     ];
 
     if (this.config.claudeSkipPermissions) {
-      args.push('--dangerously-skip-permissions');
+      claudeArgs.push('--dangerously-skip-permissions');
     }
 
     if (sessionId) {
-      args.push('--resume', sessionId);
+      claudeArgs.push('--resume', sessionId);
     }
 
-    args.push(prompt);
+    claudeArgs.push(prompt);
+
+    const spawnSpec = resolveClaudeSpawn(this.config.claudeExecutable, claudeArgs);
 
     return new Promise((resolve, reject) => {
-      const child = spawn(this.config.claudeExecutable, args, {
+      const child = spawn(spawnSpec.command, spawnSpec.args, {
         cwd: this.config.claudeWorkDir,
         env: process.env,
-        shell: process.platform === 'win32',
+        shell: false,
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -273,4 +277,31 @@ function shouldRetryFresh(error: unknown): boolean {
     message.includes('thread') ||
     message.includes('result event')
   );
+}
+
+function resolveClaudeSpawn(
+  executable: string,
+  args: string[],
+): { command: string; args: string[] } {
+  if (process.platform !== 'win32') {
+    return { command: executable, args };
+  }
+
+  const lowered = executable.toLowerCase();
+  if (lowered.endsWith('.ps1')) {
+    return {
+      command: path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+      args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', executable, ...args],
+    };
+  }
+
+  if (lowered === 'claude') {
+    const ps1Path = path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'claude.ps1');
+    return {
+      command: path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+      args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1Path, ...args],
+    };
+  }
+
+  return { command: executable, args };
 }

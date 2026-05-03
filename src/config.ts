@@ -95,8 +95,8 @@ function resolveClaudeExecutable(entries: Map<string, string>): string {
   if (configured) return configured;
 
   const candidates = [
-    path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'claude.cmd'),
     path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'claude.ps1'),
+    path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'claude.cmd'),
     path.join(path.dirname(process.execPath), 'claude'),
     '/usr/local/bin/claude',
     '/opt/homebrew/bin/claude',
