@@ -16,6 +16,7 @@ export interface Config {
   claudeExecutable: string;
   claudeModel: string;
   claudeSkipPermissions: boolean;
+  claudeEnv: Record<string, string>;
   defaultSessionId?: string;
   noEventTimeoutMs: number;
   hardTimeoutMs: number;
@@ -82,6 +83,25 @@ function splitCsv(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function collectClaudeEnv(entries: Map<string, string>): Record<string, string> {
+  const keys = [
+    'ANTHROPIC_AUTH_TOKEN',
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_BASE_URL',
+    'ANTHROPIC_SMALL_FAST_MODEL',
+    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+  ];
+
+  const env: Record<string, string> = {};
+  for (const key of keys) {
+    const value = entries.get(key);
+    if (value) {
+      env[key] = value;
+    }
+  }
+  return env;
+}
+
 function required(entries: Map<string, string>, key: string): string {
   const value = entries.get(key);
   if (!value) {
@@ -130,6 +150,7 @@ export function loadConfig(): Config {
     claudeExecutable: resolveClaudeExecutable(entries),
     claudeModel: entries.get('CFB_CLAUDE_MODEL') || 'claude-sonnet-4-6',
     claudeSkipPermissions: toBoolean(entries.get('CFB_CLAUDE_SKIP_PERMISSIONS'), true),
+    claudeEnv: collectClaudeEnv(entries),
     defaultSessionId: entries.get('CFB_DEFAULT_SESSION_ID') || undefined,
     noEventTimeoutMs: toNumber(entries.get('CFB_NO_EVENT_TIMEOUT_MS'), 10 * 60 * 1000),
     hardTimeoutMs: toNumber(entries.get('CFB_HARD_TIMEOUT_MS'), 90 * 60 * 1000),

@@ -113,7 +113,10 @@ export class ClaudeCliBridge {
     return new Promise((resolve, reject) => {
       const child = spawn(spawnSpec.command, spawnSpec.args, {
         cwd: this.config.claudeWorkDir,
-        env: process.env,
+        env: {
+          ...process.env,
+          ...this.config.claudeEnv,
+        },
         shell: false,
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'],
