@@ -5,7 +5,7 @@ import { StateStore } from './state-store.js';
 
 const FINAL_REPLY_MARKER = '---- Final Answer ----';
 
-async function main(): Promise<void> {
+export async function runBridge(): Promise<void> {
   const config = loadConfig();
   ensureBridgeDirs(config);
 
@@ -120,8 +120,3 @@ function toUserError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
 }
-
-main().catch((error) => {
-  console.error('[bridge] Fatal startup error:', error instanceof Error ? error.stack || error.message : error);
-  process.exit(1);
-});

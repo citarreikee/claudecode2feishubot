@@ -15,6 +15,7 @@ export interface Config {
   claudeWorkDir: string;
   claudeExecutable: string;
   claudeModel: string;
+  claudeEffort: string;
   claudeSkipPermissions: boolean;
   claudeEnv: Record<string, string>;
   defaultSessionId?: string;
@@ -90,6 +91,11 @@ function collectClaudeEnv(entries: Map<string, string>): Record<string, string> 
     'ANTHROPIC_BASE_URL',
     'ANTHROPIC_SMALL_FAST_MODEL',
     'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    'ANTHROPIC_MODEL',
+    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    'CLAUDE_CODE_SUBAGENT_MODEL',
+    'CLAUDE_CODE_EFFORT_LEVEL',
   ];
 
   const env: Record<string, string> = {};
@@ -149,6 +155,7 @@ export function loadConfig(): Config {
     claudeWorkDir: entries.get('CFB_CLAUDE_WORKDIR') || process.cwd(),
     claudeExecutable: resolveClaudeExecutable(entries),
     claudeModel: entries.get('CFB_CLAUDE_MODEL') || 'claude-sonnet-4-6',
+    claudeEffort: entries.get('CFB_CLAUDE_EFFORT') || entries.get('CLAUDE_CODE_EFFORT_LEVEL') || '',
     claudeSkipPermissions: toBoolean(entries.get('CFB_CLAUDE_SKIP_PERMISSIONS'), true),
     claudeEnv: collectClaudeEnv(entries),
     defaultSessionId: entries.get('CFB_DEFAULT_SESSION_ID') || undefined,

@@ -98,6 +98,10 @@ export class ClaudeCliBridge {
       BRIDGE_INSTRUCTION,
     ];
 
+    if (this.config.claudeEffort) {
+      claudeArgs.push('--effort', this.config.claudeEffort);
+    }
+
     if (this.config.claudeSkipPermissions) {
       claudeArgs.push('--dangerously-skip-permissions');
     }

@@ -1,334 +1,212 @@
-# Claude Code to Feishu Bot
+# Claude Code Feishu Bridge
 
 A lightweight bridge that lets a Feishu bot talk to your local Claude Code CLI.
 
-The design goal is intentionally simple:
+The easiest path is now:
 
-- Feishu receives a message
-- the bridge forwards it to your local Claude CLI
-- Claude replies
-- the bridge sends the reply back into the same Feishu chat
+1. Download the release binary for your operating system.
+2. Run `setup`.
+3. Run `start`.
+4. Talk to your Feishu bot.
 
-This project does not try to build a complex agent platform. It is a small, practical bridge for people who want to use Claude Code from Feishu with minimal moving parts.
+The setup wizard configures Claude Code to use **DeepSeek v4 pro** with **xhigh thinking effort** by default. Users do not need to choose a model.
 
-## What It Can Do
+## Download
 
-- Receive Feishu messages through the official long connection event mode
-- Forward each message to your local `claude` CLI
-- Keep one Claude session per Feishu chat
-- Support `/new` and `/reset` to start a fresh chat session
-- Support `/status` to inspect the current bound Claude session
-- Stream assistant replies back as normal Feishu text messages
-- Work in private chats or group chats
+Download the latest binary from GitHub Releases:
 
-## What It Does Not Do
+- Windows: `windows-x64-claude-feishu-bridge.exe`
+- macOS Apple Silicon: `macos-arm64-claude-feishu-bridge`
+- macOS Intel: `macos-x64-claude-feishu-bridge`
+- Linux: `linux-x64-claude-feishu-bridge`
 
-- No extra memory layer outside Claude
-- No transcript database
-- No image or file handling
-- No custom cards
-- No bot-to-bot orchestration
+If your operating system blocks the downloaded file, allow it once in system security settings, then run it again. Current binaries are not code-signed.
 
-## Requirements
+Node single-executable builds may print a warning about embedded `require()` support on startup. This is a Node SEA runtime warning and does not affect normal bridge usage.
 
-- Node.js 20 or newer
-- A working local `claude` CLI
-- Claude Code already authenticated on the local machine
-- A Feishu bot app with event subscription enabled
-- Windows, macOS, or Linux
+## Quick Start
 
-## How It Works
+### Windows
 
-Each Feishu chat is mapped to a single Claude session id.
-
-That means:
-
-- one private chat keeps its own Claude context
-- one group chat keeps its own Claude context
-- `/reset` or `/new` clears the bound Claude session for that chat
-
-The bridge itself stays intentionally stateless apart from that small chat-to-session mapping.
-
-## Feishu Setup
-
-Create a Feishu bot app and make sure these are configured:
-
-1. Enable bot capability
-2. Publish the app so configuration changes take effect
-3. Subscribe to the event `im.message.receive_v1`
-4. Use long connection mode for events
-
-You will need:
-
-- `App ID`
-- `App Secret`
-
-Put them into `config.env`.
-
-## Local Setup
-
-Clone the repository:
-
-```bash
-git clone https://github.com/citarreikee/claudecode2feishubot.git
-cd claudecode2feishubot
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Create your config:
-
-```bash
-cp config.env.example config.env
-```
-
-On Windows PowerShell:
+Open PowerShell in the folder containing the downloaded file:
 
 ```powershell
-Copy-Item config.env.example config.env
+.\windows-x64-claude-feishu-bridge.exe setup
+.\windows-x64-claude-feishu-bridge.exe start
 ```
 
-Edit `config.env` and fill at least:
+### macOS / Linux
 
-```env
-CFB_FEISHU_APP_ID=cli_xxx
-CFB_FEISHU_APP_SECRET=xxx
-CFB_CLAUDE_WORKDIR=C:\Users\yourname
-```
-
-Then build:
+Open Terminal in the folder containing the downloaded file:
 
 ```bash
-npm run build
+chmod +x ./macos-arm64-claude-feishu-bridge
+./macos-arm64-claude-feishu-bridge setup
+./macos-arm64-claude-feishu-bridge start
 ```
 
-## Quick Start: DeepSeek-Backed Claude Code
+Use the matching file name for your platform.
 
-This bridge does not call DeepSeek directly. It starts your local `claude` CLI, so the model switch must happen at the Claude Code layer.
+## What Setup Asks For
 
-Claude Code expects the Anthropic API shape. To use DeepSeek, you need an Anthropic-compatible gateway or adapter that exposes a DeepSeek model to Claude Code.
+The setup wizard asks for:
 
-Minimal `config.env` example:
+- Feishu App ID
+- Feishu App Secret
+- DeepSeek / Anthropic-compatible API key
+- Anthropic-compatible base URL
+- Claude Code work directory
+
+It then writes config to:
+
+```text
+~/.claude-feishu-bridge/config.env
+```
+
+It also writes a Claude settings helper file to:
+
+```text
+~/.claude-feishu-bridge/claude-settings.json
+```
+
+Secrets are stored locally on your machine. Do not share these files.
+
+## Default Model
+
+The bridge defaults to:
 
 ```env
-CFB_FEISHU_APP_ID=cli_xxx
-CFB_FEISHU_APP_SECRET=xxx
-CFB_FEISHU_DOMAIN=feishu
-CFB_FEISHU_REQUIRE_MENTION=true
-CFB_CLAUDE_WORKDIR=C:\Users\yourname
-CFB_CLAUDE_EXECUTABLE=claude
 CFB_CLAUDE_MODEL=deepseek-v4-pro
-CFB_CLAUDE_SKIP_PERMISSIONS=true
-
-ANTHROPIC_AUTH_TOKEN=sk_xxx
-ANTHROPIC_BASE_URL=https://your-anthropic-compatible-gateway.example
-ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-pro
+CFB_CLAUDE_EFFORT=xhigh
+CLAUDE_CODE_EFFORT_LEVEL=xhigh
 ```
 
-On macOS/Linux, `CFB_CLAUDE_WORKDIR` should be a Unix path:
-
-```env
-CFB_CLAUDE_WORKDIR=/Users/yourname
-```
-
-Important notes:
-
-- `CFB_CLAUDE_MODEL` is passed to `claude --model`.
-- `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, and small-model variables are passed to the spawned `claude` process.
-- Do not use DeepSeek's normal OpenAI-compatible endpoint directly unless your Claude Code setup or gateway translates it to Anthropic-compatible responses.
-- If your gateway uses a different model name, put that exact model name in `CFB_CLAUDE_MODEL`.
-
-After editing `config.env`, restart the bridge:
+This means every Feishu message is sent to local Claude Code with:
 
 ```bash
-./claude-feishu-bridge stop
-./claude-feishu-bridge start
-./claude-feishu-bridge logs 100
+claude --model deepseek-v4-pro --effort xhigh
 ```
 
-On Windows PowerShell:
+Important: Claude Code expects an Anthropic-compatible API shape. If you use DeepSeek, your base URL must be an Anthropic-compatible gateway or adapter, not a plain OpenAI-compatible DeepSeek endpoint.
 
-```powershell
-.\claude-feishu-bridge.ps1 stop
-.\claude-feishu-bridge.ps1 start
-.\claude-feishu-bridge.ps1 logs 100
-```
+## Feishu Bot Setup
 
-## Config Reference
+Create a Feishu bot app and configure:
 
-### Required
+1. Enable bot capability.
+2. Subscribe to `im.message.receive_v1`.
+3. Enable event long connection mode.
+4. Publish the app after changing permissions or events.
 
-- `CFB_FEISHU_APP_ID`
-- `CFB_FEISHU_APP_SECRET`
-- `CFB_CLAUDE_WORKDIR`
+You need:
 
-### Common
+- App ID
+- App Secret
 
-- `CFB_FEISHU_REQUIRE_MENTION=true`
-  In group chats, the bot only responds when truly mentioned.
+Enter both during `setup`.
 
-- `CFB_FEISHU_ALLOWED_USERS=`
-  Optional allowlist. You can put user ids or chat ids separated by commas.
-
-- `CFB_CLAUDE_EXECUTABLE=claude`
-  Path or command name for the Claude CLI.
-
-- `CFB_CLAUDE_MODEL=claude-sonnet-4-6`
-  Model name passed to `claude --model`. This can be a native Claude model or a gateway-provided model such as `deepseek-v4-pro`.
-
-- `CFB_CLAUDE_SKIP_PERMISSIONS=true`
-  Passes `--dangerously-skip-permissions` to the Claude CLI.
-
-- `CFB_NO_EVENT_TIMEOUT_MS=600000`
-  Kill a turn if Claude produces no events for too long.
-
-- `CFB_HARD_TIMEOUT_MS=5400000`
-  Absolute timeout for one turn.
-
-- `CFB_REPLY_MAX_CHARS=3500`
-  Maximum characters per Feishu text message chunk.
-
-### Claude Code API Routing
-
-These optional variables are useful when Claude Code is routed through a third-party Anthropic-compatible endpoint:
-
-- `ANTHROPIC_AUTH_TOKEN`
-  API token used by Claude Code.
-
-- `ANTHROPIC_API_KEY`
-  Alternative API key variable for environments that use this name.
-
-- `ANTHROPIC_BASE_URL`
-  Anthropic-compatible base URL used by Claude Code.
-
-- `ANTHROPIC_SMALL_FAST_MODEL`
-  Optional small/fast model override.
-
-- `ANTHROPIC_DEFAULT_HAIKU_MODEL`
-  Optional legacy small-model override.
-
-The bridge reads these values from `config.env` and injects them into the child `claude` process. This means you can keep model routing local to this bridge without changing global system environment variables.
-
-## End-to-End Feishu Bridge Checklist
-
-1. Create a Feishu bot app.
-2. Enable bot capability.
-3. Subscribe to `im.message.receive_v1`.
-4. Enable event long connection mode.
-5. Publish the Feishu app after every permission or event change.
-6. Clone this repository and run `npm install`.
-7. Copy `config.env.example` to `config.env`.
-8. Fill `CFB_FEISHU_APP_ID`, `CFB_FEISHU_APP_SECRET`, and `CFB_CLAUDE_WORKDIR`.
-9. If using DeepSeek, fill the Anthropic-compatible gateway variables and set `CFB_CLAUDE_MODEL`.
-10. Run `npm run build`.
-11. Start the bridge with the platform wrapper.
-12. Send `/status` to the bot in Feishu.
-
-## Run It
-
-### Simple local run
+## Commands
 
 ```bash
-npm run dev
-```
-
-Or run the built daemon:
-
-```bash
-node dist/daemon.mjs
-```
-
-## Windows Convenience Commands
-
-This repository includes two Windows wrapper scripts:
-
-- `claude-feishu-bridge.ps1`
-- `claude-feishu-bridge.cmd`
-
-They support:
-
-- `start`
-- `stop`
-- `status`
-- `logs`
-
-Example:
-
-```powershell
-.\claude-feishu-bridge.ps1 start
-.\claude-feishu-bridge.ps1 status
-.\claude-feishu-bridge.ps1 logs 100
-```
-
-Or:
-
-```cmd
-claude-feishu-bridge.cmd start
-```
-
-Before using them, edit the `$AppDir` path inside the PowerShell script if you place the repo somewhere else.
-
-## macOS and Linux Convenience Commands
-
-This repository also includes:
-
-- `claude-feishu-bridge`
-- `scripts/daemon.sh`
-
-They support the same commands:
-
-- `start`
-- `stop`
-- `status`
-- `logs`
-
-Examples:
-
-```bash
-chmod +x claude-feishu-bridge scripts/daemon.sh
-./claude-feishu-bridge start
-./claude-feishu-bridge status
-./claude-feishu-bridge logs 100
-```
-
-If you want to use it globally:
-
-```bash
-chmod +x claude-feishu-bridge scripts/daemon.sh
-ln -sf "$(pwd)/claude-feishu-bridge" ~/.local/bin/claude-feishu-bridge
-```
-
-Then:
-
-```bash
+claude-feishu-bridge setup
 claude-feishu-bridge start
+claude-feishu-bridge stop
+claude-feishu-bridge restart
+claude-feishu-bridge status
+claude-feishu-bridge logs 100
+claude-feishu-bridge run
 ```
+
+Command behavior:
+
+- `setup`: interactive wizard. Installs Claude Code if missing and writes config.
+- `start`: starts the bridge in the background.
+- `stop`: stops the background bridge.
+- `restart`: restarts the background bridge.
+- `status`: shows whether the bridge is running.
+- `logs 100`: shows recent logs.
+- `run`: runs the bridge in the foreground for debugging.
 
 ## In-Chat Commands
+
+Send these to the Feishu bot:
 
 - `/help`
 - `/status`
 - `/new`
 - `/reset`
 
-## Typical Usage
+## What It Can Do
 
-### Private chat
+- Receive Feishu messages through official long connection events.
+- Forward each message to local Claude Code.
+- Keep one Claude session per Feishu chat.
+- Stream assistant replies back to Feishu text messages.
+- Work in private chats and group chats.
 
-Send a message directly to the bot.
+## What It Does Not Do
 
-### Group chat
+- No extra memory layer outside Claude Code.
+- No transcript database.
+- No image or file handling.
+- No custom Feishu cards.
+- No bot-to-bot orchestration.
 
-If `CFB_FEISHU_REQUIRE_MENTION=true`, you must truly mention the bot first.
+## Developer Setup
 
-Example:
+If you want to run from source:
+
+```bash
+git clone https://github.com/citarreikee/claudecode2feishubot.git
+cd claudecode2feishubot
+npm install
+npm run build
+npm run cli -- setup
+npm run cli -- start
+```
+
+Run type checks:
+
+```bash
+npm run typecheck
+```
+
+Build local release binary:
+
+```bash
+npm run release:local
+```
+
+Release binaries are written to:
 
 ```text
-@your-bot summarize this repository
+releases/
+```
+
+## Manual Config Reference
+
+`setup` writes this automatically, but advanced users can edit:
+
+```text
+~/.claude-feishu-bridge/config.env
+```
+
+Common variables:
+
+```env
+CFB_FEISHU_APP_ID=cli_xxx
+CFB_FEISHU_APP_SECRET=xxx
+CFB_FEISHU_DOMAIN=feishu
+CFB_FEISHU_REQUIRE_MENTION=true
+CFB_CLAUDE_WORKDIR=/Users/yourname
+CFB_CLAUDE_EXECUTABLE=claude
+CFB_CLAUDE_MODEL=deepseek-v4-pro
+CFB_CLAUDE_EFFORT=xhigh
+CFB_CLAUDE_SKIP_PERMISSIONS=true
+ANTHROPIC_AUTH_TOKEN=sk_xxx
+ANTHROPIC_BASE_URL=https://your-anthropic-compatible-gateway.example
+ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-pro
+CLAUDE_CODE_EFFORT_LEVEL=xhigh
 ```
 
 ## Troubleshooting
@@ -337,64 +215,39 @@ Example:
 
 Check:
 
-- the Feishu app is published
-- `im.message.receive_v1` is subscribed
-- long connection mode is enabled
-- your `App ID` and `App Secret` are correct
-- the local machine can run `claude`
-- Claude CLI is already authenticated
+- The bridge is running: `claude-feishu-bridge status`.
+- Logs do not show auth errors: `claude-feishu-bridge logs 100`.
+- The Feishu app is published.
+- `im.message.receive_v1` is subscribed.
+- Long connection mode is enabled.
+- App ID and App Secret are correct.
+- The local machine can run `claude --version`.
 
-### Claude command is not found
-
-Set:
-
-```env
-CFB_CLAUDE_EXECUTABLE=C:\full\path\to\claude.cmd
-```
-
-### Group chat does not trigger replies
-
-Make sure:
-
-- the bot was truly mentioned
-- `CFB_FEISHU_REQUIRE_MENTION` matches your intended behavior
-
-### The bridge starts but immediately fails
+### Claude Code is missing
 
 Run:
 
-```powershell
-.\claude-feishu-bridge.ps1 logs 100
-```
-
-or:
-
 ```bash
-node dist/daemon.mjs
+claude-feishu-bridge setup
 ```
 
-and inspect the error output.
+The wizard will try to install `@anthropic-ai/claude-code` with npm.
+
+### DeepSeek connection fails
+
+Check:
+
+- API key is correct.
+- `ANTHROPIC_BASE_URL` points to an Anthropic-compatible gateway.
+- The gateway exposes the model name `deepseek-v4-pro`.
+- The gateway supports or ignores Claude Code effort level `xhigh`.
 
 ## Security Notes
 
-- Never commit your real `config.env`
-- Never share your Feishu app secret
-- Treat the machine running this bridge as trusted
-- If `CFB_CLAUDE_SKIP_PERMISSIONS=true`, Claude gets a much less restricted execution path
-
-## Project Structure
-
-- `src/` bridge source code
-- `scripts/build.js` build script
-- `claude-feishu-bridge.ps1` Windows process wrapper
-- `claude-feishu-bridge.cmd` Windows launcher
-- `config.env.example` config template
-
-## Release Notes
-
-The first public release notes are here:
-
-- `docs/release-notes-v0.1.0.md`
+- Never commit `~/.claude-feishu-bridge/config.env`.
+- Never share your Feishu App Secret or API key.
+- Treat the machine running this bridge as trusted.
+- `CFB_CLAUDE_SKIP_PERMISSIONS=true` gives Claude Code a less restricted execution path.
 
 ## License
 
