@@ -5,11 +5,12 @@ A lightweight bridge that lets a Feishu bot talk to your local Claude Code CLI.
 The easiest path is now:
 
 1. Download the release binary for your operating system.
-2. Run `setup`.
-3. Run `start`.
-4. Talk to your Feishu bot.
+2. Double-click it or run it once.
+3. Follow the interactive prompts.
+4. The bridge starts automatically.
+5. Talk to your Feishu bot.
 
-The setup wizard configures Claude Code to use **DeepSeek v4 pro** with **xhigh thinking effort** by default. Users do not need to choose a model.
+The wizard can configure either **Anthropic native subscription** or **DeepSeek v4 pro**. DeepSeek uses **xhigh thinking effort** by default. Users do not need to type a base URL manually.
 
 ## Download
 
@@ -24,15 +25,20 @@ If your operating system blocks the downloaded file, allow it once in system sec
 
 Node single-executable builds may print a warning about embedded `require()` support on startup. This is a Node SEA runtime warning and does not affect normal bridge usage.
 
-## Quick Start
+## One-Click Start
 
 ### Windows
 
-Open PowerShell in the folder containing the downloaded file:
+Double-click:
+
+```text
+windows-x64-claude-feishu-bridge.exe
+```
+
+Or run it from PowerShell:
 
 ```powershell
-.\windows-x64-claude-feishu-bridge.exe setup
-.\windows-x64-claude-feishu-bridge.exe start
+.\windows-x64-claude-feishu-bridge.exe
 ```
 
 ### macOS / Linux
@@ -41,8 +47,7 @@ Open Terminal in the folder containing the downloaded file:
 
 ```bash
 chmod +x ./macos-arm64-claude-feishu-bridge
-./macos-arm64-claude-feishu-bridge setup
-./macos-arm64-claude-feishu-bridge start
+./macos-arm64-claude-feishu-bridge
 ```
 
 Use the matching file name for your platform.
@@ -51,11 +56,10 @@ Use the matching file name for your platform.
 
 The setup wizard asks for:
 
-- Feishu App ID
-- Feishu App Secret
-- DeepSeek / Anthropic-compatible API key
-- Anthropic-compatible base URL
-- Claude Code work directory
+- Whether to use Anthropic native subscription or DeepSeek.
+- Anthropic API key or DeepSeek/gateway API key.
+- Feishu App ID.
+- Feishu App Secret.
 
 It then writes config to:
 
@@ -70,6 +74,14 @@ It also writes a Claude settings helper file to:
 ```
 
 Secrets are stored locally on your machine. Do not share these files.
+
+The Claude Code work directory is automatically set to the current user's home directory.
+
+After setup is complete, the bridge starts automatically and prints:
+
+```text
+Bridge connected. You can now talk to your Feishu bot.
+```
 
 ## Feishu Cards and Visual Feedback
 
@@ -90,14 +102,15 @@ To disable cards:
 CFB_FEISHU_USE_CARDS=false
 ```
 
-## Default Model
+## Model Defaults
 
-The bridge defaults to:
+If the user chooses DeepSeek, the bridge writes:
 
 ```env
 CFB_CLAUDE_MODEL=deepseek-v4-pro
 CFB_CLAUDE_EFFORT=xhigh
 CLAUDE_CODE_EFFORT_LEVEL=xhigh
+ANTHROPIC_BASE_URL=https://code.ppchat.vip
 ```
 
 This means every Feishu message is sent to local Claude Code with:
@@ -106,7 +119,9 @@ This means every Feishu message is sent to local Claude Code with:
 claude --model deepseek-v4-pro --effort xhigh
 ```
 
-Important: Claude Code expects an Anthropic-compatible API shape. If you use DeepSeek, your base URL must be an Anthropic-compatible gateway or adapter, not a plain OpenAI-compatible DeepSeek endpoint.
+If the user chooses Anthropic native subscription, the bridge uses Anthropic's base URL automatically and asks only for the Anthropic API key.
+
+Important: Claude Code expects an Anthropic-compatible API shape. The DeepSeek option assumes your DeepSeek/gateway key works with the built-in Anthropic-compatible gateway URL.
 
 ## Feishu Bot Setup
 
@@ -127,7 +142,9 @@ Enter both during `setup`.
 ## Commands
 
 ```bash
+claude-feishu-bridge
 claude-feishu-bridge setup
+claude-feishu-bridge setup --start
 claude-feishu-bridge start
 claude-feishu-bridge stop
 claude-feishu-bridge restart
@@ -139,6 +156,7 @@ claude-feishu-bridge run
 Command behavior:
 
 - `setup`: interactive wizard. Installs Claude Code if missing and writes config.
+- `setup --start`: runs setup and starts the bridge immediately.
 - `start`: starts the bridge in the background.
 - `stop`: stops the background bridge.
 - `restart`: restarts the background bridge.
@@ -182,8 +200,7 @@ git clone https://github.com/citarreikee/claudecode2feishubot.git
 cd claudecode2feishubot
 npm install
 npm run build
-npm run cli -- setup
-npm run cli -- start
+npm run cli
 ```
 
 Run type checks:
@@ -226,7 +243,7 @@ CFB_CLAUDE_MODEL=deepseek-v4-pro
 CFB_CLAUDE_EFFORT=xhigh
 CFB_CLAUDE_SKIP_PERMISSIONS=true
 ANTHROPIC_AUTH_TOKEN=sk_xxx
-ANTHROPIC_BASE_URL=https://your-anthropic-compatible-gateway.example
+ANTHROPIC_BASE_URL=https://code.ppchat.vip
 ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-pro
 CLAUDE_CODE_EFFORT_LEVEL=xhigh
 ```

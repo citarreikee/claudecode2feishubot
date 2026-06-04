@@ -9,32 +9,40 @@ import { BRIDGE_HOME, CONFIG_PATH } from './config.js';
 
 const DEFAULT_MODEL = 'deepseek-v4-pro';
 const DEFAULT_EFFORT = 'xhigh';
-const DEFAULT_BASE_URL = 'https://code.ppchat.vip';
+const DEEPSEEK_BASE_URL = 'https://code.ppchat.vip';
+const ANTHROPIC_BASE_URL = 'https://api.anthropic.com';
+const ANTHROPIC_MODEL = 'sonnet';
+const ANTHROPIC_EFFORT = 'xhigh';
 
 export interface SetupOptions {
   assumeYes?: boolean;
 }
 
-export async function runSetup(options: SetupOptions = {}): Promise<void> {
+export interface SetupResult {
+  configPath: string;
+  provider: 'anthropic' | 'deepseek';
+  model: string;
+  effort: string;
+}
+
+export async function runSetup(options: SetupOptions = {}): Promise<SetupResult> {
   fs.mkdirSync(BRIDGE_HOME, { recursive: true });
   const rl = readline.createInterface({ input, output });
   try {
     console.log('Claude Code Feishu Bridge setup');
-    console.log('This wizard will configure DeepSeek v4 pro with xhigh thinking by default.');
+    console.log('This wizard will check dependencies, configure Claude Code, and connect your Feishu bot.');
     console.log('');
 
+    await ensureEnvironmentDependencies();
     await ensureClaudeCode(options);
 
     const existing = readEnvFile(CONFIG_PATH);
-    const feishuAppId = await ask(rl, 'Feishu App ID', existing.CFB_FEISHU_APP_ID);
-    const feishuAppSecret = await askSecret(rl, 'Feishu App Secret', existing.CFB_FEISHU_APP_SECRET);
-    const apiKey = await askSecret(
-      rl,
-      'DeepSeek / Anthropic-compatible API key',
-      existing.ANTHROPIC_AUTH_TOKEN || existing.ANTHROPIC_API_KEY,
-    );
-    const baseUrl = await ask(rl, 'Anthropic-compatible base URL', existing.ANTHROPIC_BASE_URL || DEFAULT_BASE_URL);
-    const workDir = await ask(rl, 'Claude Code work directory', existing.CFB_CLAUDE_WORKDIR || os.homedir());
+    const provider = await askProvider(rl, existing.ANTHROPIC_BASE_URL);
+    const providerDefaults = getProviderDefaults(provider);
+    const apiKey = await askSecret(rl, providerDefaults.keyLabel, existing.ANTHROPIC_AUTH_TOKEN || existing.ANTHROPIC_API_KEY);
+    const feishuAppId = await askRequired(rl, 'Feishu App ID', existing.CFB_FEISHU_APP_ID);
+    const feishuAppSecret = await askRequiredSecret(rl, 'Feishu App Secret', existing.CFB_FEISHU_APP_SECRET);
+    const workDir = os.homedir();
 
     const config = {
       CFB_FEISHU_APP_ID: feishuAppId,
@@ -45,34 +53,58 @@ export async function runSetup(options: SetupOptions = {}): Promise<void> {
       CFB_FEISHU_USE_CARDS: existing.CFB_FEISHU_USE_CARDS || 'true',
       CFB_CLAUDE_WORKDIR: workDir,
       CFB_CLAUDE_EXECUTABLE: existing.CFB_CLAUDE_EXECUTABLE || 'claude',
-      CFB_CLAUDE_MODEL: DEFAULT_MODEL,
-      CFB_CLAUDE_EFFORT: DEFAULT_EFFORT,
+      CFB_CLAUDE_MODEL: providerDefaults.model,
+      CFB_CLAUDE_EFFORT: providerDefaults.effort,
       CFB_CLAUDE_SKIP_PERMISSIONS: existing.CFB_CLAUDE_SKIP_PERMISSIONS || 'true',
       CFB_DEFAULT_SESSION_ID: existing.CFB_DEFAULT_SESSION_ID || '',
       CFB_NO_EVENT_TIMEOUT_MS: existing.CFB_NO_EVENT_TIMEOUT_MS || String(10 * 60 * 1000),
       CFB_HARD_TIMEOUT_MS: existing.CFB_HARD_TIMEOUT_MS || String(90 * 60 * 1000),
       CFB_REPLY_MAX_CHARS: existing.CFB_REPLY_MAX_CHARS || '3500',
-      ANTHROPIC_BASE_URL: baseUrl,
+      ANTHROPIC_BASE_URL: providerDefaults.baseUrl,
       ANTHROPIC_AUTH_TOKEN: apiKey,
       ANTHROPIC_API_KEY: apiKey,
-      ANTHROPIC_MODEL: DEFAULT_MODEL,
-      ANTHROPIC_DEFAULT_OPUS_MODEL: DEFAULT_MODEL,
-      ANTHROPIC_DEFAULT_SONNET_MODEL: DEFAULT_MODEL,
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: DEFAULT_MODEL,
-      ANTHROPIC_SMALL_FAST_MODEL: DEFAULT_MODEL,
-      CLAUDE_CODE_SUBAGENT_MODEL: DEFAULT_MODEL,
-      CLAUDE_CODE_EFFORT_LEVEL: DEFAULT_EFFORT,
+      ANTHROPIC_MODEL: providerDefaults.model,
+      ANTHROPIC_DEFAULT_OPUS_MODEL: providerDefaults.model,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: providerDefaults.model,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: providerDefaults.model,
+      ANTHROPIC_SMALL_FAST_MODEL: providerDefaults.model,
+      CLAUDE_CODE_SUBAGENT_MODEL: providerDefaults.model,
+      CLAUDE_CODE_EFFORT_LEVEL: providerDefaults.effort,
     };
 
     writeEnvFile(CONFIG_PATH, config);
     writeClaudeSettings(config);
     console.log('');
     console.log(`Config written to ${CONFIG_PATH}`);
-    console.log(`Model: ${DEFAULT_MODEL}`);
-    console.log(`Thinking effort: ${DEFAULT_EFFORT}`);
+    console.log(`Provider: ${provider}`);
+    console.log(`Model: ${providerDefaults.model}`);
+    console.log(`Thinking effort: ${providerDefaults.effort}`);
+    console.log(`Claude Code work directory: ${workDir}`);
+    return {
+      configPath: CONFIG_PATH,
+      provider,
+      model: providerDefaults.model,
+      effort: providerDefaults.effort,
+    };
   } finally {
     rl.close();
   }
+}
+
+async function ensureEnvironmentDependencies(): Promise<void> {
+  console.log('Checking local dependencies...');
+  const nodeVersion = process.versions.node;
+  const major = Number(nodeVersion.split('.')[0]);
+  if (!Number.isFinite(major) || major < 20) {
+    throw new Error(`Node.js 20+ is required. Current Node.js version: ${nodeVersion}`);
+  }
+  console.log(`Node.js found: ${nodeVersion}`);
+
+  const npmCheck = spawnSync('npm', ['--version'], { encoding: 'utf-8', shell: process.platform === 'win32' });
+  if (npmCheck.status !== 0) {
+    throw new Error('npm was not found. Please install Node.js 20+ from https://nodejs.org, then run this file again.');
+  }
+  console.log(`npm found: ${(npmCheck.stdout || npmCheck.stderr).trim()}`);
 }
 
 async function ensureClaudeCode(options: SetupOptions): Promise<void> {
@@ -80,11 +112,6 @@ async function ensureClaudeCode(options: SetupOptions): Promise<void> {
   if (existing.status === 0) {
     console.log(`Claude Code found: ${(existing.stdout || existing.stderr).trim()}`);
     return;
-  }
-
-  const npmCheck = spawnSync('npm', ['--version'], { encoding: 'utf-8', shell: process.platform === 'win32' });
-  if (npmCheck.status !== 0) {
-    throw new Error('npm was not found. Please install Node.js 20+ first, then rerun setup.');
   }
 
   if (!options.assumeYes) {
@@ -97,6 +124,54 @@ async function ensureClaudeCode(options: SetupOptions): Promise<void> {
   if (install.status !== 0) {
     throw new Error('Failed to install Claude Code with npm.');
   }
+}
+
+async function askProvider(rl: readline.Interface, existingBaseUrl = ''): Promise<'anthropic' | 'deepseek'> {
+  const fallback = existingBaseUrl && existingBaseUrl !== DEEPSEEK_BASE_URL ? '1' : '2';
+  while (true) {
+    console.log('');
+    console.log('Choose model provider:');
+    console.log('  1) Anthropic native subscription');
+    console.log('  2) DeepSeek v4 pro via Anthropic-compatible gateway');
+    const answer = (await rl.question(`Provider [${fallback}]: `)).trim() || fallback;
+    if (answer === '1') return 'anthropic';
+    if (answer === '2') return 'deepseek';
+    console.log('Please enter 1 or 2.');
+  }
+}
+
+function getProviderDefaults(provider: 'anthropic' | 'deepseek'): {
+  baseUrl: string;
+  effort: string;
+  keyLabel: string;
+  model: string;
+} {
+  if (provider === 'anthropic') {
+    return {
+      baseUrl: ANTHROPIC_BASE_URL,
+      effort: ANTHROPIC_EFFORT,
+      keyLabel: 'Anthropic API key',
+      model: ANTHROPIC_MODEL,
+    };
+  }
+  return {
+    baseUrl: DEEPSEEK_BASE_URL,
+    effort: DEFAULT_EFFORT,
+    keyLabel: 'DeepSeek / gateway API key',
+    model: DEFAULT_MODEL,
+  };
+}
+
+async function askRequired(rl: readline.Interface, label: string, fallback = ''): Promise<string> {
+  while (true) {
+    const value = await ask(rl, label, fallback);
+    if (value) return value;
+    console.log(`${label} is required.`);
+  }
+}
+
+async function askRequiredSecret(rl: readline.Interface, label: string, fallback = ''): Promise<string> {
+  return askRequired(rl, label, fallback);
 }
 
 async function ask(rl: readline.Interface, label: string, fallback = ''): Promise<string> {

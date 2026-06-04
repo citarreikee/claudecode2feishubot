@@ -1,20 +1,29 @@
 import fs from 'node:fs';
+import readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 
 import { CONFIG_PATH } from './config.js';
 import { runBridge } from './main.js';
 import { currentStatus, readLogs, startDaemon, stopDaemon } from './process-manager.js';
 import { runSetup } from './setup.js';
 
-const command = process.argv[2] || 'help';
+const command = process.argv[2] || 'wizard';
 
 async function main(): Promise<void> {
   switch (command) {
+    case 'wizard':
+      await runSetup({ assumeYes: process.argv.includes('--yes') || process.argv.includes('-y') });
+      startAndReport();
+      await waitBeforeExit();
+      return;
     case 'setup':
       await runSetup({ assumeYes: process.argv.includes('--yes') || process.argv.includes('-y') });
+      if (process.argv.includes('--start')) {
+        startAndReport();
+      }
       return;
     case 'start': {
-      const result = startDaemon(...resolveRunCommand());
-      console.log(result.message);
+      startAndReport();
       return;
     }
     case 'stop':
@@ -46,6 +55,24 @@ async function main(): Promise<void> {
   }
 }
 
+async function waitBeforeExit(): Promise<void> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return;
+  const rl = readline.createInterface({ input, output });
+  try {
+    await rl.question('Press Enter to close this window...');
+  } finally {
+    rl.close();
+  }
+}
+
+function startAndReport(): void {
+  const result = startDaemon(...resolveRunCommand());
+  console.log(result.message);
+  if (result.pid) {
+    console.log('Bridge connected. You can now talk to your Feishu bot.');
+  }
+}
+
 function resolveRunCommand(): [string, string[]] {
   const current = process.argv[1] || '';
   if (fs.existsSync(current) && /\.(mjs|js)$/i.test(current)) {
@@ -59,7 +86,8 @@ function printHelp(): void {
     'Claude Code Feishu Bridge',
     '',
     'Commands:',
-    '  setup       Interactive setup. Installs Claude Code if needed and configures DeepSeek v4 pro + xhigh.',
+    '  wizard      Default. Run setup, write config, and start the bridge.',
+    '  setup       Interactive setup. Installs Claude Code if needed and configures model provider.',
     '  start       Start the Feishu bridge in the background.',
     '  stop        Stop the background bridge.',
     '  restart     Restart the background bridge.',
@@ -68,8 +96,7 @@ function printHelp(): void {
     '  run         Run the bridge in the foreground.',
     '',
     'Typical first run:',
-    '  claude-feishu-bridge setup',
-    '  claude-feishu-bridge start',
+    '  claude-feishu-bridge',
   ].join('\n'));
 }
 
