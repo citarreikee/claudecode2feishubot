@@ -4,6 +4,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 
 import type { Config } from './config.js';
+import { buildResumeRecoverySummary, withRecoveryContext } from './resume-recovery.js';
 import { StateStore } from './state-store.js';
 
 const BRIDGE_INSTRUCTION = [
@@ -56,15 +57,25 @@ export class ClaudeCliBridge {
   runTurn(chatId: string, prompt: string, hooks: ClaudeTurnHooks = {}): Promise<ClaudeTurnResult> {
     return this.enqueue(chatId, async () => {
       const savedSessionId = this.store.getSessionId(chatId) || this.config.defaultSessionId;
+      const existingRecoverySummary = this.store.getRecoverySummary(chatId);
+      const initialPrompt = savedSessionId
+        ? prompt
+        : withRecoveryContext(prompt, existingRecoverySummary);
       try {
-        const result = await this.invoke(prompt, savedSessionId, hooks);
+        const result = await this.invoke(initialPrompt, savedSessionId, hooks);
         this.store.setSessionId(chatId, result.sessionId);
         return result;
       } catch (error) {
         if (savedSessionId && shouldRetryFresh(error)) {
           console.warn('[bridge] Resume failed, retrying fresh session for chat', chatId);
+          const recoverySummary = this.config.resumeRecoveryEnabled
+            ? buildResumeRecoverySummary(savedSessionId, this.config)
+            : '';
+          if (recoverySummary) {
+            this.store.setRecoverySummary(chatId, savedSessionId, recoverySummary);
+          }
           this.store.clearSession(chatId);
-          const result = await this.invoke(prompt, undefined, hooks);
+          const result = await this.invoke(withRecoveryContext(prompt, recoverySummary || existingRecoverySummary), undefined, hooks);
           this.store.setSessionId(chatId, result.sessionId);
           return result;
         }

@@ -3,6 +3,9 @@ import path from 'node:path';
 
 export interface ChatState {
   sessionId?: string;
+  recoveredFromSessionId?: string;
+  recoverySummary?: string;
+  recoverySummaryUpdatedAt?: string;
   updatedAt: string;
 }
 
@@ -24,12 +27,35 @@ export class StateStore {
   }
 
   setSessionId(chatId: string, sessionId: string): void {
-    this.state.chats[chatId] = { sessionId, updatedAt: new Date().toISOString() };
+    this.state.chats[chatId] = {
+      ...this.state.chats[chatId],
+      sessionId,
+      updatedAt: new Date().toISOString(),
+    };
     this.save();
   }
 
+  setRecoverySummary(chatId: string, sessionId: string, summary: string): void {
+    this.state.chats[chatId] = {
+      ...this.state.chats[chatId],
+      recoveredFromSessionId: sessionId,
+      recoverySummary: summary,
+      recoverySummaryUpdatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.save();
+  }
+
+  getRecoverySummary(chatId: string): string | undefined {
+    return this.state.chats[chatId]?.recoverySummary;
+  }
+
   clearSession(chatId: string): void {
-    this.state.chats[chatId] = { updatedAt: new Date().toISOString() };
+    this.state.chats[chatId] = {
+      ...this.state.chats[chatId],
+      sessionId: undefined,
+      updatedAt: new Date().toISOString(),
+    };
     this.save();
   }
 

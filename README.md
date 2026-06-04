@@ -179,14 +179,15 @@ Send these to the Feishu bot:
 - Receive Feishu messages through official long connection events.
 - Forward each message to local Claude Code.
 - Keep one Claude session per Feishu chat.
+- Recover partial context from local Claude transcripts when an old session fails to resume.
 - Stream assistant replies back to Feishu text messages.
 - Send card-based status and answer messages with plain-text fallback.
 - Work in private chats and group chats.
 
 ## What It Does Not Do
 
-- No extra memory layer outside Claude Code.
-- No transcript database.
+- No full transcript database outside Claude Code.
+- No cross-machine memory sync.
 - No image or file handling.
 - No bot-to-bot orchestration.
 
@@ -243,11 +244,32 @@ CFB_CLAUDE_EXECUTABLE=claude
 CFB_CLAUDE_MODEL=deepseek-v4-pro
 CFB_CLAUDE_EFFORT=xhigh
 CFB_CLAUDE_SKIP_PERMISSIONS=true
+CFB_RESUME_RECOVERY_ENABLED=true
+CFB_RESUME_RECOVERY_MAX_CHARS=12000
+CFB_RESUME_RECOVERY_MAX_MESSAGES=24
 ANTHROPIC_AUTH_TOKEN=sk_xxx
 ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-pro
 CLAUDE_CODE_EFFORT_LEVEL=xhigh
 ```
+
+## Resume Recovery
+
+The bridge normally resumes one Claude Code session per Feishu chat. If Claude Code cannot resume an old session, the bridge:
+
+1. Looks for the local Claude transcript file for that session under `~/.claude/projects`.
+2. Extracts a bounded summary from recent user/assistant messages.
+3. Saves that recovery summary in the bridge's local `chats.json`.
+4. Starts a fresh Claude session and injects the recovery summary into the first fresh prompt.
+
+This restores partial continuity without blocking the chat on a broken `--resume`.
+
+Limits:
+
+- It only works when the old Claude transcript exists on the same machine.
+- It is a bounded recent-message recovery, not full session replay.
+- It does not upload or sync memory across machines.
+- The user's latest message remains authoritative if recovered context is stale.
 
 ## Troubleshooting
 

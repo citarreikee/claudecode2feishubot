@@ -20,6 +20,9 @@ export interface Config {
   claudeSkipPermissions: boolean;
   claudeEnv: Record<string, string>;
   defaultSessionId?: string;
+  resumeRecoveryEnabled: boolean;
+  resumeRecoveryMaxChars: number;
+  resumeRecoveryMaxMessages: number;
   noEventTimeoutMs: number;
   hardTimeoutMs: number;
   replyMaxChars: number;
@@ -161,6 +164,9 @@ export function loadConfig(): Config {
     claudeSkipPermissions: toBoolean(entries.get('CFB_CLAUDE_SKIP_PERMISSIONS'), true),
     claudeEnv: collectClaudeEnv(entries),
     defaultSessionId: entries.get('CFB_DEFAULT_SESSION_ID') || undefined,
+    resumeRecoveryEnabled: toBoolean(entries.get('CFB_RESUME_RECOVERY_ENABLED'), true),
+    resumeRecoveryMaxChars: toNumber(entries.get('CFB_RESUME_RECOVERY_MAX_CHARS'), 12_000),
+    resumeRecoveryMaxMessages: toNumber(entries.get('CFB_RESUME_RECOVERY_MAX_MESSAGES'), 24),
     noEventTimeoutMs: toNumber(entries.get('CFB_NO_EVENT_TIMEOUT_MS'), 10 * 60 * 1000),
     hardTimeoutMs: toNumber(entries.get('CFB_HARD_TIMEOUT_MS'), 90 * 60 * 1000),
     replyMaxChars: toNumber(entries.get('CFB_REPLY_MAX_CHARS'), 3500),
