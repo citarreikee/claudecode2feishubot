@@ -10,7 +10,7 @@ The easiest path is now:
 4. The bridge starts automatically.
 5. Talk to your Feishu bot.
 
-The wizard can configure either **Anthropic native subscription** or **DeepSeek v4 pro**. DeepSeek uses **xhigh thinking effort** by default. Users do not need to type a base URL manually.
+The wizard can configure either **Anthropic native subscription** or **DeepSeek v4 pro**. DeepSeek uses **xhigh thinking effort** by default. DeepSeek users only need to enter their key; Anthropic users enter both key and base URL.
 
 ## Download
 
@@ -58,6 +58,7 @@ The setup wizard asks for:
 
 - Whether to use Anthropic native subscription or DeepSeek.
 - Anthropic API key or DeepSeek/gateway API key.
+- Anthropic-compatible Base URL, only when Anthropic is selected.
 - Feishu App ID.
 - Feishu App Secret.
 
@@ -110,7 +111,7 @@ If the user chooses DeepSeek, the bridge writes:
 CFB_CLAUDE_MODEL=deepseek-v4-pro
 CFB_CLAUDE_EFFORT=xhigh
 CLAUDE_CODE_EFFORT_LEVEL=xhigh
-ANTHROPIC_BASE_URL=https://code.ppchat.vip
+ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 ```
 
 This means every Feishu message is sent to local Claude Code with:
@@ -119,9 +120,9 @@ This means every Feishu message is sent to local Claude Code with:
 claude --model deepseek-v4-pro --effort xhigh
 ```
 
-If the user chooses Anthropic native subscription, the bridge uses Anthropic's base URL automatically and asks only for the Anthropic API key.
+If the user chooses Anthropic native subscription, the bridge asks for both API key and Base URL. This supports native Anthropic and third-party Anthropic-compatible providers without hard-coding any private gateway.
 
-Important: Claude Code expects an Anthropic-compatible API shape. The DeepSeek option assumes your DeepSeek/gateway key works with the built-in Anthropic-compatible gateway URL.
+Important: Claude Code expects an Anthropic-compatible API shape. The DeepSeek option uses DeepSeek's default Anthropic-compatible URL automatically.
 
 ## Feishu Bot Setup
 
@@ -243,7 +244,7 @@ CFB_CLAUDE_MODEL=deepseek-v4-pro
 CFB_CLAUDE_EFFORT=xhigh
 CFB_CLAUDE_SKIP_PERMISSIONS=true
 ANTHROPIC_AUTH_TOKEN=sk_xxx
-ANTHROPIC_BASE_URL=https://code.ppchat.vip
+ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-pro
 CLAUDE_CODE_EFFORT_LEVEL=xhigh
 ```

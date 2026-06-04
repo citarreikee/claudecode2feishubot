@@ -9,7 +9,7 @@ import { BRIDGE_HOME, CONFIG_PATH } from './config.js';
 
 const DEFAULT_MODEL = 'deepseek-v4-pro';
 const DEFAULT_EFFORT = 'xhigh';
-const DEEPSEEK_BASE_URL = 'https://code.ppchat.vip';
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/anthropic';
 const ANTHROPIC_BASE_URL = 'https://api.anthropic.com';
 const ANTHROPIC_MODEL = 'sonnet';
 const ANTHROPIC_EFFORT = 'xhigh';
@@ -40,6 +40,9 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
     const provider = await askProvider(rl, existing.ANTHROPIC_BASE_URL);
     const providerDefaults = getProviderDefaults(provider);
     const apiKey = await askSecret(rl, providerDefaults.keyLabel, existing.ANTHROPIC_AUTH_TOKEN || existing.ANTHROPIC_API_KEY);
+    const baseUrl = provider === 'anthropic'
+      ? await askRequired(rl, 'Anthropic-compatible Base URL', existing.ANTHROPIC_BASE_URL || ANTHROPIC_BASE_URL)
+      : providerDefaults.baseUrl;
     const feishuAppId = await askRequired(rl, 'Feishu App ID', existing.CFB_FEISHU_APP_ID);
     const feishuAppSecret = await askRequiredSecret(rl, 'Feishu App Secret', existing.CFB_FEISHU_APP_SECRET);
     const workDir = os.homedir();
@@ -60,7 +63,7 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
       CFB_NO_EVENT_TIMEOUT_MS: existing.CFB_NO_EVENT_TIMEOUT_MS || String(10 * 60 * 1000),
       CFB_HARD_TIMEOUT_MS: existing.CFB_HARD_TIMEOUT_MS || String(90 * 60 * 1000),
       CFB_REPLY_MAX_CHARS: existing.CFB_REPLY_MAX_CHARS || '3500',
-      ANTHROPIC_BASE_URL: providerDefaults.baseUrl,
+      ANTHROPIC_BASE_URL: baseUrl,
       ANTHROPIC_AUTH_TOKEN: apiKey,
       ANTHROPIC_API_KEY: apiKey,
       ANTHROPIC_MODEL: providerDefaults.model,
@@ -79,6 +82,7 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
     console.log(`Provider: ${provider}`);
     console.log(`Model: ${providerDefaults.model}`);
     console.log(`Thinking effort: ${providerDefaults.effort}`);
+    console.log(`Base URL: ${baseUrl}`);
     console.log(`Claude Code work directory: ${workDir}`);
     return {
       configPath: CONFIG_PATH,
