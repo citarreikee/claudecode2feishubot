@@ -39,6 +39,7 @@ type FeishuMessageEventData = {
 
 const DEDUP_MAX = 1000;
 const TYPING_EMOJI = 'Typing';
+type CardTone = 'info' | 'success' | 'warning' | 'danger';
 
 export class FeishuBot {
   private readonly config: Config;
@@ -117,6 +118,42 @@ export class FeishuBot {
           content: JSON.stringify({ text: chunk }),
         },
       });
+    }
+  }
+
+  async sendAssistantCard(chatId: string, text: string): Promise<void> {
+    if (!this.config.feishuUseCards) {
+      await this.sendText(chatId, text);
+      return;
+    }
+
+    const chunks = splitMessage(text, this.config.replyMaxChars);
+    for (const chunk of chunks) {
+      await this.sendCardWithFallback(chatId, makeMessageCard('Claude Code', chunk, 'info'));
+    }
+  }
+
+  async sendStatusCard(chatId: string, title: string, text: string, tone: CardTone = 'info'): Promise<void> {
+    if (!this.config.feishuUseCards) {
+      await this.sendText(chatId, `${title}\n${text}`);
+      return;
+    }
+    await this.sendCardWithFallback(chatId, makeMessageCard(title, text, tone));
+  }
+
+  private async sendCardWithFallback(chatId: string, card: Record<string, unknown>): Promise<void> {
+    try {
+      await this.restClient.im.message.create({
+        params: { receive_id_type: 'chat_id' },
+        data: {
+          receive_id: chatId,
+          msg_type: 'interactive',
+          content: JSON.stringify(card),
+        },
+      });
+    } catch (error) {
+      console.warn('[bridge] Failed to send card, falling back to text:', error instanceof Error ? error.message : error);
+      await this.sendText(chatId, cardToPlainText(card));
     }
   }
 
@@ -351,6 +388,47 @@ export class FeishuBot {
     };
     return tokenPayload.tenant_access_token;
   }
+}
+
+function makeMessageCard(title: string, text: string, tone: CardTone): Record<string, unknown> {
+  return {
+    config: {
+      wide_screen_mode: true,
+      update_multi: true,
+    },
+    header: {
+      template: cardTemplate(tone),
+      title: {
+        tag: 'plain_text',
+        content: title,
+      },
+    },
+    elements: [
+      {
+        tag: 'markdown',
+        content: toFeishuMarkdown(text),
+      },
+    ],
+  };
+}
+
+function cardTemplate(tone: CardTone): string {
+  if (tone === 'success') return 'green';
+  if (tone === 'warning') return 'yellow';
+  if (tone === 'danger') return 'red';
+  return 'blue';
+}
+
+function toFeishuMarkdown(text: string): string {
+  return text.replace(/\r\n/g, '\n').trim() || '(empty)';
+}
+
+function cardToPlainText(card: Record<string, unknown>): string {
+  const header = card.header as { title?: { content?: string } } | undefined;
+  const elements = card.elements as Array<{ content?: string }> | undefined;
+  const title = header?.title?.content || 'Message';
+  const content = elements?.map((element) => element.content || '').filter(Boolean).join('\n\n') || '';
+  return `${title}\n${content}`.trim();
 }
 
 function splitMessage(text: string, maxChars: number): string[] {

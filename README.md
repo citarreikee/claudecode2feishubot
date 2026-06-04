@@ -71,6 +71,25 @@ It also writes a Claude settings helper file to:
 
 Secrets are stored locally on your machine. Do not share these files.
 
+## Feishu Cards and Visual Feedback
+
+By default, replies are sent as Feishu interactive cards instead of plain text.
+
+The bridge sends:
+
+- A yellow running card when Claude Code starts working.
+- Blue assistant answer cards for Claude Code output.
+- A green final card when the turn is complete.
+- A red error card if bridge execution fails.
+
+If the bot app does not have card/message permissions or card sending fails, the bridge automatically falls back to plain text.
+
+To disable cards:
+
+```env
+CFB_FEISHU_USE_CARDS=false
+```
+
 ## Default Model
 
 The bridge defaults to:
@@ -142,6 +161,7 @@ Send these to the Feishu bot:
 - Forward each message to local Claude Code.
 - Keep one Claude session per Feishu chat.
 - Stream assistant replies back to Feishu text messages.
+- Send card-based status and answer messages with plain-text fallback.
 - Work in private chats and group chats.
 
 ## What It Does Not Do
@@ -149,8 +169,9 @@ Send these to the Feishu bot:
 - No extra memory layer outside Claude Code.
 - No transcript database.
 - No image or file handling.
-- No custom Feishu cards.
 - No bot-to-bot orchestration.
+
+File and image messages are not supported yet. The bridge currently accepts `text` and `post` messages only. Feishu/Lark itself supports file messages, but this project does not yet download attachments or pass local file paths into Claude Code.
 
 ## Developer Setup
 
@@ -198,6 +219,7 @@ CFB_FEISHU_APP_ID=cli_xxx
 CFB_FEISHU_APP_SECRET=xxx
 CFB_FEISHU_DOMAIN=feishu
 CFB_FEISHU_REQUIRE_MENTION=true
+CFB_FEISHU_USE_CARDS=true
 CFB_CLAUDE_WORKDIR=/Users/yourname
 CFB_CLAUDE_EXECUTABLE=claude
 CFB_CLAUDE_MODEL=deepseek-v4-pro

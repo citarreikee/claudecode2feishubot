@@ -52,7 +52,7 @@ export async function runBridge(): Promise<void> {
         error instanceof Error ? error.stack || error.message : error,
       );
       try {
-        await feishu.sendText(inbound.chatId, `Bridge execution failed: ${toUserError(error)}`);
+        await feishu.sendStatusCard(inbound.chatId, 'Bridge Execution Failed', toUserError(error), 'danger');
       } catch (sendError) {
         console.error('[bridge] Failed to send error reply:', sendError);
       }
@@ -70,46 +70,51 @@ async function handleInbound(
 
   if (trimmed === '/new' || trimmed === '/reset') {
     claude.reset(chatId);
-    await feishu.sendText(chatId, 'Cleared the current Claude session for this chat. The next message will start fresh.');
+    await feishu.sendStatusCard(chatId, 'Session Reset', 'Cleared the current Claude session for this chat. The next message will start fresh.', 'success');
     return;
   }
 
   if (trimmed === '/status') {
     const sessionId = claude.getSessionId(chatId);
-    await feishu.sendText(
+    await feishu.sendStatusCard(
       chatId,
+      'Bridge Status',
       sessionId
         ? `Current Claude session: ${sessionId}${claude.isBusy(chatId) ? '\nStatus: busy' : ''}`
         : 'No Claude session is currently bound to this chat.',
+      claude.isBusy(chatId) ? 'warning' : 'info',
     );
     return;
   }
 
   if (trimmed === '/help') {
-    await feishu.sendText(
+    await feishu.sendStatusCard(
       chatId,
+      'Claude Code Feishu Bridge',
       [
         'This is a lightweight Feishu <-> Claude Code bridge.',
         '/new or /reset: clear the current Claude session for this chat',
         '/status: show the Claude session currently bound to this chat',
       ].join('\n'),
+      'info',
     );
     return;
   }
 
   await feishu.onMessageStart(chatId);
+  await feishu.sendStatusCard(chatId, 'Claude Code Running', 'Request received. Claude Code is working on it.', 'warning');
   try {
     const result = await claude.runTurn(chatId, trimmed, {
       onAssistantMessage: async (message) => {
-        await feishu.sendText(chatId, message);
+        await feishu.sendAssistantCard(chatId, message);
       },
       onFinal: async () => {
-        await feishu.sendText(chatId, FINAL_REPLY_MARKER);
+        await feishu.sendStatusCard(chatId, 'Final Answer', FINAL_REPLY_MARKER, 'success');
       },
     });
     if (result.messageCount === 0) {
-      await feishu.sendText(chatId, '(Claude returned no text output in this turn)');
-      await feishu.sendText(chatId, FINAL_REPLY_MARKER);
+      await feishu.sendStatusCard(chatId, 'No Text Output', '(Claude returned no text output in this turn)', 'warning');
+      await feishu.sendStatusCard(chatId, 'Final Answer', FINAL_REPLY_MARKER, 'success');
     }
   } finally {
     await feishu.onMessageEnd(chatId);

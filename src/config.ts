@@ -12,6 +12,7 @@ export interface Config {
   feishuDomain: 'feishu' | 'lark';
   feishuAllowedUsers: string[];
   feishuRequireMention: boolean;
+  feishuUseCards: boolean;
   claudeWorkDir: string;
   claudeExecutable: string;
   claudeModel: string;
@@ -152,6 +153,7 @@ export function loadConfig(): Config {
     feishuDomain,
     feishuAllowedUsers: splitCsv(entries.get('CFB_FEISHU_ALLOWED_USERS')),
     feishuRequireMention: toBoolean(entries.get('CFB_FEISHU_REQUIRE_MENTION'), true),
+    feishuUseCards: toBoolean(entries.get('CFB_FEISHU_USE_CARDS'), true),
     claudeWorkDir: entries.get('CFB_CLAUDE_WORKDIR') || process.cwd(),
     claudeExecutable: resolveClaudeExecutable(entries),
     claudeModel: entries.get('CFB_CLAUDE_MODEL') || 'claude-sonnet-4-6',
