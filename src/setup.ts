@@ -53,7 +53,7 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
       CFB_FEISHU_DOMAIN: existing.CFB_FEISHU_DOMAIN || 'feishu',
       CFB_FEISHU_ALLOWED_USERS: existing.CFB_FEISHU_ALLOWED_USERS || '',
       CFB_FEISHU_REQUIRE_MENTION: existing.CFB_FEISHU_REQUIRE_MENTION || 'true',
-      CFB_FEISHU_USE_CARDS: existing.CFB_FEISHU_USE_CARDS || 'true',
+      CFB_FEISHU_USE_CARDS: existing.CFB_FEISHU_USE_CARDS || 'false',
       CFB_CLAUDE_WORKDIR: workDir,
       CFB_CLAUDE_EXECUTABLE: existing.CFB_CLAUDE_EXECUTABLE || 'claude',
       CFB_CLAUDE_MODEL: providerDefaults.model,

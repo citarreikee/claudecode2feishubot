@@ -235,11 +235,7 @@ export class ClaudeCliBridge {
             activeSessionId = event.session_id;
           }
           if (event.subtype === 'error' || event.is_error === true) {
-            const message = typeof event.result === 'string'
-              ? event.result
-              : typeof event.error === 'string'
-                ? event.error
-                : 'Claude returned an error result.';
+            const message = formatClaudeErrorResult(event);
             fail(new Error(message));
             return;
           }
@@ -282,8 +278,27 @@ function shouldRetryFresh(error: unknown): boolean {
     message.includes('resume') ||
     message.includes('session') ||
     message.includes('thread') ||
-    message.includes('result event')
+    message.includes('result event') ||
+    message.includes('error result')
   );
+}
+
+function formatClaudeErrorResult(event: Record<string, unknown>): string {
+  const directMessage = typeof event.result === 'string'
+    ? event.result
+    : typeof event.error === 'string'
+      ? event.error
+      : '';
+  if (directMessage) return directMessage;
+
+  const summary: Record<string, unknown> = {};
+  for (const key of ['subtype', 'is_error', 'api_error_status', 'session_id', 'terminal_reason']) {
+    if (event[key] !== undefined) {
+      summary[key] = event[key];
+    }
+  }
+
+  return `Claude returned an error result: ${JSON.stringify(summary)}`;
 }
 
 function resolveClaudeSpawn(

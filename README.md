@@ -84,11 +84,17 @@ After setup is complete, the bridge starts automatically and prints:
 Bridge connected. You can now talk to your Feishu bot.
 ```
 
-## Feishu Cards and Visual Feedback
+## Message Style
 
-By default, replies are sent as Feishu interactive cards instead of plain text.
+By default, replies are sent as plain text for a cleaner chat experience.
 
-The bridge sends:
+To enable Feishu interactive cards:
+
+```env
+CFB_FEISHU_USE_CARDS=true
+```
+
+When cards are enabled, the bridge sends:
 
 - A yellow running card when Claude Code starts working.
 - Blue assistant answer cards for Claude Code output.
@@ -96,12 +102,6 @@ The bridge sends:
 - A red error card if bridge execution fails.
 
 If the bot app does not have card/message permissions or card sending fails, the bridge automatically falls back to plain text.
-
-To disable cards:
-
-```env
-CFB_FEISHU_USE_CARDS=false
-```
 
 ## Model Defaults
 
@@ -237,7 +237,7 @@ CFB_FEISHU_APP_ID=cli_xxx
 CFB_FEISHU_APP_SECRET=xxx
 CFB_FEISHU_DOMAIN=feishu
 CFB_FEISHU_REQUIRE_MENTION=true
-CFB_FEISHU_USE_CARDS=true
+CFB_FEISHU_USE_CARDS=false
 CFB_CLAUDE_WORKDIR=/Users/yourname
 CFB_CLAUDE_EXECUTABLE=claude
 CFB_CLAUDE_MODEL=deepseek-v4-pro

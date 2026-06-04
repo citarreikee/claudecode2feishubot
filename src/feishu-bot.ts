@@ -141,6 +141,19 @@ export class FeishuBot {
     await this.sendCardWithFallback(chatId, makeMessageCard(title, text, tone));
   }
 
+  async sendRunningStatus(chatId: string): Promise<void> {
+    if (!this.config.feishuUseCards) return;
+    await this.sendStatusCard(chatId, 'Claude Code Running', 'Request received. Claude Code is working on it.', 'warning');
+  }
+
+  async sendFinalMarker(chatId: string, marker: string): Promise<void> {
+    if (!this.config.feishuUseCards) {
+      await this.sendText(chatId, marker);
+      return;
+    }
+    await this.sendStatusCard(chatId, 'Final Answer', marker, 'success');
+  }
+
   private async sendCardWithFallback(chatId: string, card: Record<string, unknown>): Promise<void> {
     try {
       await this.restClient.im.message.create({

@@ -102,19 +102,19 @@ async function handleInbound(
   }
 
   await feishu.onMessageStart(chatId);
-  await feishu.sendStatusCard(chatId, 'Claude Code Running', 'Request received. Claude Code is working on it.', 'warning');
+  await feishu.sendRunningStatus(chatId);
   try {
     const result = await claude.runTurn(chatId, trimmed, {
       onAssistantMessage: async (message) => {
         await feishu.sendAssistantCard(chatId, message);
       },
       onFinal: async () => {
-        await feishu.sendStatusCard(chatId, 'Final Answer', FINAL_REPLY_MARKER, 'success');
+        await feishu.sendFinalMarker(chatId, FINAL_REPLY_MARKER);
       },
     });
     if (result.messageCount === 0) {
       await feishu.sendStatusCard(chatId, 'No Text Output', '(Claude returned no text output in this turn)', 'warning');
-      await feishu.sendStatusCard(chatId, 'Final Answer', FINAL_REPLY_MARKER, 'success');
+      await feishu.sendFinalMarker(chatId, FINAL_REPLY_MARKER);
     }
   } finally {
     await feishu.onMessageEnd(chatId);
